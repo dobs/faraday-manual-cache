@@ -52,6 +52,13 @@ end
 
 As with `faraday-http-cache` it's recommended that `faraday-manual-cache` be fairly low in the middleware stack.
 
+## TODO
+
+  * Additional cache key options.
+  * Cache namespacing.
+  * Request header for bypassing caching when necessary.
+  * Response header for indicating when response is a cached copy. 
+
 ## Contributing
 
 1. Fork it ( http://github.com/dobs/faraday-manual-cache/fork )
