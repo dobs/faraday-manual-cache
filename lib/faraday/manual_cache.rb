@@ -9,6 +9,7 @@ module Faraday
   # Currently accepts four arguments:
   #
   #   :expires_in    - Cache expiry, in seconds (default: 30).
+  #   :logger        - A logger object to send cache hit/miss/write messages.
   #   :store         - An object (or lookup symbol) for an
   #                    ActiveSupport::Cache::Store instance. (default:
   #                    MemoryStore).
@@ -19,6 +20,8 @@ module Faraday
       super(app)
       options = args.first || {}
       @expires_in    = options.fetch(:expires_in, 30)
+      @logger        = options.fetch(:logger, nil)
+      @namespace     = options.fetch(:namespace, 'faraday-manual-cache')
       @store         = options.fetch(:store, :memory_store)
       @store_options = options.fetch(:store_options, {})
 
@@ -42,7 +45,8 @@ module Faraday
 
     # Cache the env to the store.
     def cache_response(env)
-      @store.write(env.url, env, expires_in: @expires_in)
+      info "Cache WRITE: #{key(env)}"
+      @store.write(key(env), env, expires_in: @expires_in)
     end
 
     # Whether or not the env is cacheable.
@@ -52,16 +56,32 @@ module Faraday
 
     # Retrieve (and memoize) cached response matching current env.
     def cached_response(env)
-      @cached_response ||= @store.fetch(env.url)
+      response_env = @store.fetch(key(env))
+      if response_env.nil?
+        info "Cache MISS: #{key(env)}"
+      else
+        info "Cache HIT: #{key(env)}"
+      end
+      response_env
+    end
+
+    def info(message)
+      @logger.info(message) unless @logger.nil?
+    end
+
+    def key(env)
+      env.url
     end
 
     # Checks whether the specified store is a symbol, and if so attempts to
     # do a lookup against ActiveSupport::Cache.
     def initialize_store
-      return unless @store.is_a? Symbol
+      if @store.is_a? Symbol
+        require 'active_support/cache'
+        @store = ActiveSupport::Cache.lookup_store(@store, @store_options)
+      end
 
-      require 'active_support/cache'
-      @store = ActiveSupport::Cache.lookup_store(@store, @store_options)
+      @store.namespace = @namespace
     end
 
     # Massage env into a Response object.
