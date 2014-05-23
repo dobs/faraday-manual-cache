@@ -1,7 +1,7 @@
 # coding: utf-8
 Gem::Specification.new do |spec|
   spec.name          = 'faraday-manual-cache'
-  spec.version       = '0.0.1'
+  spec.version       = '0.1.0'
   spec.authors       = ['Daniel O\'Brien']
   spec.email         = ['dan@dobs.org']
   spec.summary       = %q(A super simple Faraday cache implementation.)
