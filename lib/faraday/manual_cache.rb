@@ -25,6 +25,8 @@ module Faraday
       @store         = options.fetch(:store, :memory_store)
       @store_options = options.fetch(:store_options, {})
 
+      @store_options[:namespace] ||= @namespace
+
       initialize_store
     end
 
@@ -35,34 +37,32 @@ module Faraday
     protected
 
     def call!(env)
-      return to_response(cached_response(env)) if cacheable?(env) &&
-        cached_response(env)
+      response_env = cached_response(env)
 
-      @app.call(env).on_complete do |response_env|
-        cache_response(response_env) if cacheable?(env)
+      if response_env && !env.request_headers['x-faraday-manual-cache']
+        info "Cache HIT: #{key(env)}"
+        response_env.response_headers['x-faraday-manual-cache'] = 'HIT'
+        to_response(cached_response(env)) 
+      else
+        info "Cache MISS: #{key(env)}"
+        @app.call(env).on_complete do |response_env|
+          response_env.response_headers['x-faraday-manual-cache'] = 'MISS'
+          cache_response(response_env) if cacheable?(env)
+        end
       end
     end
 
-    # Cache the env to the store.
     def cache_response(env)
       info "Cache WRITE: #{key(env)}"
       @store.write(key(env), env, expires_in: @expires_in)
     end
 
-    # Whether or not the env is cacheable.
     def cacheable?(env)
       env.method == :get || env.method == :head
     end
 
-    # Retrieve (and memoize) cached response matching current env.
     def cached_response(env)
-      response_env = @store.fetch(key(env))
-      if response_env.nil?
-        info "Cache MISS: #{key(env)}"
-      else
-        info "Cache HIT: #{key(env)}"
-      end
-      response_env
+      @store.fetch(key(env)) if cacheable?(env)
     end
 
     def info(message)
@@ -73,19 +73,16 @@ module Faraday
       env.url
     end
 
-    # Checks whether the specified store is a symbol, and if so attempts to
-    # do a lookup against ActiveSupport::Cache.
     def initialize_store
-      if @store.is_a? Symbol
-        require 'active_support/cache'
-        @store = ActiveSupport::Cache.lookup_store(@store, @store_options)
-      end
+      return unless @store.is_a? Symbol
 
-      @store.namespace = @namespace
+      require 'active_support/cache'
+      @store = ActiveSupport::Cache.lookup_store(@store, @store_options)
     end
 
-    # Massage env into a Response object.
     def to_response(env)
+      env = env.dup
+      env.response_headers['x-faraday-manual-cache'] = 'HIT'
       response = Response.new
       response.finish(env) unless env.parallel?
       env.response = response
