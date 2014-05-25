@@ -39,20 +39,20 @@ module Faraday
     def call!(env)
       response_env = cached_response(env)
 
-      if response_env && !env.request_headers['x-faraday-manual-cache']
-        info "Cache HIT: #{key(env)}"
+      if response_env
         response_env.response_headers['x-faraday-manual-cache'] = 'HIT'
         to_response(cached_response(env)) 
       else
-        info "Cache MISS: #{key(env)}"
         @app.call(env).on_complete do |response_env|
           response_env.response_headers['x-faraday-manual-cache'] = 'MISS'
-          cache_response(response_env) if cacheable?(env)
+          cache_response(response_env)
         end
       end
     end
 
     def cache_response(env)
+      return unless cacheable?(env) && !env.request_headers['x-faraday-manual-cache']
+
       info "Cache WRITE: #{key(env)}"
       @store.write(key(env), env, expires_in: @expires_in)
     end
@@ -62,7 +62,13 @@ module Faraday
     end
 
     def cached_response(env)
-      @store.fetch(key(env)) if cacheable?(env)
+      response_env = @store.fetch(key(env)) if cacheable?(env) && !env.request_headers['x-faraday-manual-cache']
+      if response_env
+        info "Cache HIT: #{key(env)}"
+      else
+        info "Cache MISS: #{key(env)}"
+      end
+      response_env
     end
 
     def info(message)
