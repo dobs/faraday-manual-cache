@@ -8,17 +8,22 @@ module Faraday
   #
   # Currently accepts four arguments:
   #
+  #   :conditions    - Conditional caching based on a lambda (default: GET/HEAD
+  #                    requests)
   #   :expires_in    - Cache expiry, in seconds (default: 30).
   #   :logger        - A logger object to send cache hit/miss/write messages.
   #   :store         - An object (or lookup symbol) for an
   #                    ActiveSupport::Cache::Store instance. (default:
   #                    MemoryStore).
   #   :store_options - Options to pass to the store when generated based on a
-  #                    lookup symvol (default: {}).
+  #                    lookup symbol (default: {})
   class ManualCache < Faraday::Middleware
+    DEFAULT_CONDITIONS = ->(env) { env.method == :get || env.method == :head }
+
     def initialize(app, *args)
       super(app)
       options = args.first || {}
+      @conditions    = options.fetch(:conditions, DEFAULT_CONDITIONS)
       @expires_in    = options.fetch(:expires_in, 30)
       @logger        = options.fetch(:logger, nil)
       @namespace     = options.fetch(:namespace, 'faraday-manual-cache')
@@ -41,7 +46,7 @@ module Faraday
 
       if response_env
         response_env.response_headers['x-faraday-manual-cache'] = 'HIT'
-        to_response(cached_response(env)) 
+        to_response(response_env)
       else
         @app.call(env).on_complete do |response_env|
           response_env.response_headers['x-faraday-manual-cache'] = 'MISS'
@@ -58,16 +63,20 @@ module Faraday
     end
 
     def cacheable?(env)
-      env.method == :get || env.method == :head
+      @conditions.call(env)
     end
 
     def cached_response(env)
-      response_env = @store.fetch(key(env)) if cacheable?(env) && !env.request_headers['x-faraday-manual-cache']
+      if cacheable?(env) && !env.request_headers['x-faraday-manual-cache']
+        response_env = @store.fetch(key(env))
+      end
+
       if response_env
         info "Cache HIT: #{key(env)}"
       else
         info "Cache MISS: #{key(env)}"
       end
+
       response_env
     end
 

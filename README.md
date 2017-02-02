@@ -20,7 +20,7 @@ Or install it yourself as:
 
 ## Usage
 
-Super simple example that caches using the default store (`MemoryStore`) for the default expires_in (30 seconds): 
+Super simple example that caches using the default store (`MemoryStore`) for the default expires_in (30 seconds):
 
 ```ruby
 require 'faraday'
@@ -33,7 +33,9 @@ end
 ```
 The middleware currently takes several options:
 
+  * `conditions`: Conditional caching (default GET and HEAD requests).
   * `expires_in`: Cache expiry, in seconds (default 30).
+  * `logger`: Specify a logger to enable logging.
   * `store`: The `ActiveSupport::Cache`-compatible store to use (default `ActiveSupport::Cache::MemoryStore`).
   * `store_options`: Options passed to the store if created by lookup (e.g. when specifying `:memory_store`, `:redis_store`, etc).
 
@@ -45,7 +47,11 @@ require 'faraday-manual-cache'
 require 'redis-rails'
 
 connection = Faraday.new(url: 'http://example.com') do |builder|
-  builder.use :manual_cache, expires_in: 10, store: :redis_store, store_options: { host: 'my-redis-server', port: '1234' }
+  builder.use :manual_cache,
+    conditions: ->(env) { env.method == :get },
+    expires_in: 10,
+    store: :redis_store,
+    store_options: { host: 'my-redis-server', port: '1234' }
   builder.adapter Faraday.default_adapter
 end
 ```
