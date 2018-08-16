@@ -1,3 +1,4 @@
+require 'faraday-manual-cache/configuration'
 require 'faraday'
 
 module Faraday
@@ -12,11 +13,7 @@ module Faraday
   #                    requests)
   #   :expires_in    - Cache expiry, in seconds (default: 30).
   #   :logger        - A logger object to send cache hit/miss/write messages.
-  #   :store         - An object (or lookup symbol) for an
-  #                    ActiveSupport::Cache::Store instance. (default:
-  #                    MemoryStore).
-  #   :store_options - Options to pass to the store when generated based on a
-  #                    lookup symbol (default: {})
+
   class ManualCache < Faraday::Middleware
     DEFAULT_CONDITIONS = ->(env) { env.method == :get || env.method == :head }
 
@@ -26,13 +23,6 @@ module Faraday
       @conditions    = options.fetch(:conditions, DEFAULT_CONDITIONS)
       @expires_in    = options.fetch(:expires_in, 30)
       @logger        = options.fetch(:logger, nil)
-      @namespace     = options.fetch(:namespace, 'faraday-manual-cache')
-      @store         = options.fetch(:store, :memory_store)
-      @store_options = options.fetch(:store_options, {})
-
-      @store_options[:namespace] ||= @namespace
-
-      initialize_store
     end
 
     def call(env)
@@ -59,7 +49,7 @@ module Faraday
       return unless cacheable?(env) && !env.request_headers['x-faraday-manual-cache']
 
       info "Cache WRITE: #{key(env)}"
-      @store.write(key(env), env, expires_in: @expires_in)
+      store.write(key(env), env, expires_in: @expires_in)
     end
 
     def cacheable?(env)
@@ -68,7 +58,7 @@ module Faraday
 
     def cached_response(env)
       if cacheable?(env) && !env.request_headers['x-faraday-manual-cache']
-        response_env = @store.fetch(key(env))
+        response_env = store.fetch(key(env))
       end
 
       if response_env
@@ -88,11 +78,8 @@ module Faraday
       env.url
     end
 
-    def initialize_store
-      return unless @store.is_a? Symbol
-
-      require 'active_support/cache'
-      @store = ActiveSupport::Cache.lookup_store(@store, @store_options)
+    def store
+      @store ||= FaradayManualCache.configuration.memory_store
     end
 
     def to_response(env)

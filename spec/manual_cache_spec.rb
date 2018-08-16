@@ -16,6 +16,12 @@ RSpec.describe Faraday::ManualCache do
       stub.put('/') { |_| [200, {}, ''] }
     end
   end
+  let(:store) { ActiveSupport::Cache::MemoryStore.new }
+  let(:configuration_double) { double(:configuration_double, memory_store: store) }
+
+  before do
+    allow(FaradayManualCache).to receive(:configuration).and_return(configuration_double)
+  end
 
   context 'basic configuration' do
     subject do
@@ -23,12 +29,6 @@ RSpec.describe Faraday::ManualCache do
         faraday.use :manual_cache
         faraday.adapter :test, stubs
       end
-    end
-
-    let(:store) { MockStore.new }
-
-    before do
-      allow(ActiveSupport::Cache).to receive(:lookup_store).and_return(store)
     end
 
     it 'should cache on GET' do
@@ -62,12 +62,6 @@ RSpec.describe Faraday::ManualCache do
         faraday.use :manual_cache, conditions: ->(_) { true }
         faraday.adapter :test, stubs
       end
-    end
-
-    let(:store) { MockStore.new }
-
-    before do
-      allow(ActiveSupport::Cache).to receive(:lookup_store).and_return(store)
     end
 
     it 'should cache on GET' do
