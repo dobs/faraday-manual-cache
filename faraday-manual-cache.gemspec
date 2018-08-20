@@ -1,7 +1,10 @@
 # coding: utf-8
+$:.push File.expand_path("../lib", __FILE__)
+require 'faraday-manual-cache/version'
+
 Gem::Specification.new do |spec|
   spec.name          = 'faraday-manual-cache'
-  spec.version       = '0.2.0'
+  spec.version       = FaradayManualCache::VERSION
   spec.authors       = ['Daniel O\'Brien']
   spec.email         = ['dan@dobs.org']
   spec.summary       = %q(A super simple Faraday cache implementation.)
@@ -21,4 +24,5 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency 'bundler', '~> 1.5'
   spec.add_development_dependency 'rake'
+  spec.add_development_dependency 'rspec'
 end

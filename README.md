@@ -18,6 +18,16 @@ Or install it yourself as:
 
     $ gem install faraday-manual-cache
 
+## Configuration
+
+Create a configuration file and select your memory store class. If you use Rails, just create an initializator.
+
+```ruby
+FaradayManualCache.configure do |config|
+  config.memory_store = ActiveSupport::Cache::MemoryStore.new
+end
+```
+
 ## Usage
 
 Super simple example that caches using the default store (`MemoryStore`) for the default expires_in (30 seconds):
@@ -36,31 +46,20 @@ The middleware currently takes several options:
   * `conditions`: Conditional caching (default GET and HEAD requests).
   * `expires_in`: Cache expiry, in seconds (default 30).
   * `logger`: Specify a logger to enable logging.
-  * `store`: The `ActiveSupport::Cache`-compatible store to use (default `ActiveSupport::Cache::MemoryStore`).
-  * `store_options`: Options passed to the store if created by lookup (e.g. when specifying `:memory_store`, `:redis_store`, etc).
 
 So a more complicated example would be:
 
 ```ruby
 require 'faraday'
 require 'faraday-manual-cache'
-require 'redis-rails'
 
 connection = Faraday.new(url: 'http://example.com') do |builder|
-  builder.use :manual_cache,
-    conditions: ->(env) { env.method == :get },
-    expires_in: 10,
-    store: :redis_store,
-    store_options: { host: 'my-redis-server', port: '1234' }
+  builder.use :manual_cache, conditions: ->(env) { env.method == :get }, expires_in: 10, logger: Rails.logger
   builder.adapter Faraday.default_adapter
 end
 ```
 
 As with `faraday-http-cache` it's recommended that `faraday-manual-cache` be fairly low in the middleware stack.
-
-## TODO
-
-  * Additional cache key options.
 
 ## Contributing
 
