@@ -16,6 +16,7 @@ module Faraday
 
   class ManualCache < Faraday::Middleware
     DEFAULT_CONDITIONS = ->(env) { env.method == :get || env.method == :head }
+    DEFAULT_KEY = ->(env) { env.url }
 
     def initialize(app, *args)
       super(app)
@@ -23,6 +24,7 @@ module Faraday
       @conditions    = options.fetch(:conditions, DEFAULT_CONDITIONS)
       @expires_in    = options.fetch(:expires_in, 30)
       @logger        = options.fetch(:logger, nil)
+      @cache_key     = options.fetch(:cache_key, DEFAULT_KEY)
     end
 
     def call(env)
@@ -75,7 +77,7 @@ module Faraday
     end
 
     def key(env)
-      env.url
+      @cache_key.call(env)
     end
 
     def store
