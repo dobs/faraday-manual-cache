@@ -105,4 +105,22 @@ RSpec.describe Faraday::ManualCache do
       subject.get('/')
     end
   end
+
+  context 'dynamic configuration with expires in' do
+    subject do
+      Faraday.new(url: 'http://www.example.com') do |faraday|
+        faraday.use :manual_cache,
+                    conditions: ->(_) { true },
+                    cache_key: ->(env) { "prefix-#{env.url}" },
+                    expires_in: ->(env) { env.status * 2 }
+        faraday.adapter :test, stubs
+      end
+    end
+
+    it 'should cache with ttl based on lambda' do
+      expect(store).to receive(:fetch)
+      expect(store).to receive(:write).with('prefix-http://www.example.com/', any_args, expires_in: 400)
+      subject.get('/')
+    end
+  end
 end

@@ -51,7 +51,11 @@ module Faraday
       return unless cacheable?(env) && !env.request_headers['x-faraday-manual-cache']
 
       info "Cache WRITE: #{key(env)}"
-      store.write(key(env), env, expires_in: @expires_in)
+      store.write(
+        key(env),
+        env,
+        expires_in: expires_in(env)
+      )
     end
 
     def cacheable?(env)
@@ -78,6 +82,10 @@ module Faraday
 
     def key(env)
       @cache_key.call(env)
+    end
+
+    def expires_in(env)
+      @expires_in.respond_to?(:call) ? @expires_in.call(env) : @expires_in
     end
 
     def store
