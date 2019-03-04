@@ -45,7 +45,8 @@ The middleware currently takes several options:
 
   * `conditions`: Conditional caching (default GET and HEAD requests).
   * `cache_key`: Key for requests comparison (default URL)
-  * `expires_in`: Cache expiry, in seconds (default 30).
+  * `expires_in`: Cache expiry, in seconds, either as a value or a
+    lambda (default: 30 seconds).
   * `logger`: Specify a logger to enable logging.
 
 So a more complicated example would be:
@@ -58,7 +59,7 @@ connection = Faraday.new(url: 'http://example.com') do |builder|
   builder.use :manual_cache,
               conditions: ->(env) { env.method == :get },
               cache_key: ->(env) { "prefix-#{env.url}" },
-              expires_in: 10,
+              expires_in: ->(env) { env.status * 10 },
               logger: Rails.logger
   builder.adapter Faraday.default_adapter
 end
