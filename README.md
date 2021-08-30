@@ -1,5 +1,7 @@
 # Faraday::ManualCache
 
+**IMPORTANT:** This gem hasn't been actively maintained in quite some time, I strongly recommend looking into alternatives!
+
 A super simple Faraday cache implementation.
 
 Unlike [`faraday-http-cache`](https://github.com/plataformatec/faraday-http-cache), `faraday-manual-cache` ignores cache headers in favor of a manually-specified `expires_in`.
